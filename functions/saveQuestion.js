@@ -1,38 +1,52 @@
-const fs = require('fs');
+const fetch = require("node-fetch");
+const { Octokit } = require("@octokit/rest");
 
-exports.handler = async (event, context) => {
-    if (event.httpMethod === 'POST') {
-        try {
-            const { subject, question, options, correctAnswer } = JSON.parse(event.body);
-            
-            // Here, we're simulating saving data to a local file (for simplicity).
-            // In production, you would use a database like Firebase, MongoDB, etc.
-            const filePath = `./questions_${subject}.json`;
-            let existingQuestions = [];
-            
-            if (fs.existsSync(filePath)) {
-                existingQuestions = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            }
-            
-            const newQuestion = { question, options, correctAnswer };
-            existingQuestions.push(newQuestion);
-            
-            fs.writeFileSync(filePath, JSON.stringify(existingQuestions, null, 2));
-            
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ success: true }),
-            };
-        } catch (error) {
-            return {
-                statusCode: 500,
-                body: JSON.stringify({ success: false, error: error.message }),
-            };
-        }
-    } else {
-        return {
-            statusCode: 405,
-            body: JSON.stringify({ success: false, message: 'Method Not Allowed' }),
-        };
+// GitHub Repository Details
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // Set this in Netlify environment variables
+const REPO_OWNER = "Lipcream210"; // Your GitHub username
+const REPO_NAME = "captlipreview"; // Your repo name
+const FILE_PATH = "questions.json"; // File to store questions
+
+exports.handler = async (event) => {
+    if (event.httpMethod !== "POST") {
+        return { statusCode: 405, body: "Method Not Allowed" };
+    }
+
+    const { subject, question, options, correct } = JSON.parse(event.body);
+
+    if (!subject || !question || !options || !correct) {
+        return { statusCode: 400, body: "Missing data fields" };
+    }
+
+    try {
+        const octokit = new Octokit({ auth: GITHUB_TOKEN });
+
+        // Fetch existing questions.json from GitHub
+        const { data } = await octokit.repos.getContent({
+            owner: REPO_OWNER,
+            repo: REPO_NAME,
+            path: FILE_PATH,
+        });
+
+        const content = Buffer.from(data.content, "base64").toString("utf8");
+        const questions = JSON.parse(content);
+
+        // Add the new question
+        if (!questions[subject]) questions[subject] = [];
+        questions[subject].push({ question, options, correct });
+
+        // Update GitHub file
+        const response = await octokit.repos.createOrUpdateFileContents({
+            owner: REPO_OWNER,
+            repo: REPO_NAME,
+            path: FILE_PATH,
+            message: "Updated questions.json",
+            content: Buffer.from(JSON.stringify(questions, null, 2)).toString("base64"),
+            sha: data.sha,
+        });
+
+        return { statusCode: 200, body: JSON.stringify({ message: "Question saved" }) };
+    } catch (error) {
+        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
     }
 };
