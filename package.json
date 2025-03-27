@@ -1,0 +1,9 @@
+{
+  "name": "quiz-app",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "netlify build",
+    "deploy": "netlify deploy"
+  }
+}

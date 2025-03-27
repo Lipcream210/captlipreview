@@ -1,0 +1,9 @@
+[build]
+  publish = "public"  # Replace "public" with the folder where your static files are located
+  functions = "functions"  # The folder where your serverless functions are located
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Review</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 0 5px;
+        }
+        .tab:hover {
+            background: #666;
+        }
+        .hidden {
+            display: none;
+        }
+        .container {
+            background: #2c2c2c;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+        h1, h2 {
+            color: #ffffff;
+        }
+        .options button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
+            background: #444;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .options button:hover {
+            background: #666;
+        }
+        .correct {
+            background: #28a745 !important;
+        }
+        .wrong {
+            background: #dc3545 !important;
+        }
+        select, input, button {
+            margin: 5px;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            width: 90%;
+            background: #333;
+            color: white;
+        }
+        button {
+            background: #28a745; /* Original color for other buttons */
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            padding: 10px 20px;
+            margin: 10px 0;
+            border: none;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background: #218838; /* Darker shade for hover effect */
+        }
+
+        /* New style for "Next" and "Reset Quiz" buttons */
+        .next-btn {
+            background: #007bff; /* A blue shade that complements the dark theme */
+        }
+
+        .reset-btn {
+            background: #dc3545; /* A red shade to indicate reset action */
+        }
+
+        .next-btn:hover {
+            background: #0056b3; /* Darker blue for hover */
+        }
+
+        .reset-btn:hover {
+            background: #c82333; /* Darker red for hover */
+        }
+
+        .question-list {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .question-list button {
+            background: #dc3545;
+            margin: 5px;
+        }
+        .question-list button.edit {
+            background: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="tabs">
+        <button class="tab" onclick="showTab('quiz')">Take Review</button>
+        <button class="tab" onclick="showTab('manage')">Manage Questions</button>
+    </div>
+    
+    <div id="quiz" class="container">
+        <h1>Review</h1>
+        <h2>Select a Category</h2>
+        <select id="subject-select" onchange="loadSubject()">
+            <option value="">-- Choose a Category --</option>
+            <script>
+                for (let i = 1; i <= 19; i++) {
+                    document.write(`<option value="F${i}">F${i}</option>`);
+                }
+            </script>
+        </select>
+        
+        <div id="quiz-container" class="hidden">
+            <p id="question-counter"></p>
+            <p class="question" id="question">Loading...</p>
+            <div class="options" id="options"></div>
+            <button class="next-btn" onclick="nextQuestion()">Next</button>
+            <button class="reset-btn" onclick="resetQuiz()">Reset Quiz</button>
+            <p id="total-score"></p>
+        </div>
+    </div>
+
+    <div id="manage" class="container hidden">
+        <h2>Add a New Question</h2>
+        <select id="add-subject">
+            <script>
+                for (let i = 1; i <= 19; i++) {
+                    document.write(`<option value="F${i}">F${i}</option>`);
+                }
+            </script>
+        </select>
+        <input type="text" id="new-question" placeholder="Enter question" style="background: white;">
+        <input type="text" id="option1" placeholder="Option A">
+        <input type="text" id="option2" placeholder="Option B">
+        <input type="text" id="option3" placeholder="Option C">
+        <input type="text" id="option4" placeholder="Option D">
+        <select id="correct-answer">
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+        </select>
+        <button onclick="addQuestion()">Add Question</button>
+
+        <div id="question-list" class="question-list"></div>
+    </div>
+
+    <script>
+        let questions = JSON.parse(localStorage.getItem("questions")) || {};
+        let currentSubject = "";
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        function showTab(tabName) {
+            document.getElementById('quiz').classList.add('hidden');
+            document.getElementById('manage').classList.add('hidden');
+            document.getElementById(tabName).classList.remove('hidden');
+            if (tabName === 'manage') {
+                displayQuestions();
+            }
+        }
+
+        function loadSubject() {
+            currentSubject = document.getElementById("subject-select").value;
+            currentQuestionIndex = 0;
+            score = 0; // Reset score for new quiz
+            if (questions[currentSubject] && questions[currentSubject].length > 0) {
+                document.getElementById("quiz-container").classList.remove("hidden");
+                showQuestion();
+            } else {
+                alert("No questions available for this subject.");
+                document.getElementById("quiz-container").classList.add("hidden");
+            }
+        }
+
+        function showQuestion() {
+            let questionData = questions[currentSubject][currentQuestionIndex];
+            document.getElementById("question").innerText = questionData.question;
+            document.getElementById("question-counter").innerText = `${currentQuestionIndex + 1}/${questions[currentSubject].length}`;
+            let optionsDiv = document.getElementById("options");
+            optionsDiv.innerHTML = "";
+            questionData.options.forEach((option, index) => {
+                let letter = String.fromCharCode(65 + index);
+                let button = document.createElement("button");
+                button.innerText = `${letter}. ${option}`;
+                button.onclick = () => checkAnswer(button, letter, questionData.correct);
+                optionsDiv.appendChild(button);
+            });
+        }
+
+        function checkAnswer(button, selected, correct) {
+            document.querySelectorAll(".options button").forEach(btn => btn.disabled = true);
+            if (selected === correct) {
+                button.classList.add("correct");
+                score++;
+            } else {
+                button.classList.add("wrong");
+                document.querySelectorAll(".options button").forEach(btn => {
+                    if (btn.innerText.startsWith(correct)) {
+                        btn.classList.add("correct");
+                    }
+                });
+            }
+            document.getElementById("total-score").innerText = `Score: ${score}`;
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions[currentSubject].length) {
+                showQuestion();
+            } else {
+                alert(`Quiz Completed! Your score is: ${score}/${questions[currentSubject].length}`);
+                resetQuiz();
+            }
+        }
+
+        function resetQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            document.getElementById("total-score").innerText = "";
+            document.getElementById("quiz-container").classList.add("hidden");
+        }
+
+        function addQuestion() {
+            let subject = document.getElementById("add-subject").value;
+            let question = document.getElementById("new-question").value;
+            let options = [
+                document.getElementById("option1").value,
+                document.getElementById("option2").value,
+                document.getElementById("option3").value,
+                document.getElementById("option4").value
+            ];
+            let correct = document.getElementById("correct-answer").value;
+            
+            if (!questions[subject]) questions[subject] = [];
+            questions[subject].push({ question, options, correct });
+            localStorage.setItem("questions", JSON.stringify(questions));
+            
+            displayQuestions(); // Update the question list
+            document.querySelectorAll("#manage input").forEach(input => input.value = "");
+            document.getElementById("correct-answer").value = "A"; // Reset correct answer dropdown
+        }
+
+        function displayQuestions() {
+            let questionListDiv = document.getElementById("question-list");
+            questionListDiv.innerHTML = "";
+            if (questions[currentSubject]) {
+                questions[currentSubject].forEach((q, index) => {
+                    let questionItem = document.createElement("div");
+                    questionItem.innerHTML = `
+                        <strong>Question ${index + 1}: ${q.question}</strong><br>
+                        <span>Options: ${q.options.join(", ")}</span><br>
+                        Correct Answer: ${q.correct}<br>
+                        <button class="edit" onclick="editQuestion('${currentSubject}', ${index})">Edit</button>
+                        <button onclick="deleteQuestion('${currentSubject}', ${index})">Delete</button><br><br>
+                    `;
+                    questionListDiv.appendChild(questionItem);
+                });
+            }
+        }
+
+        function editQuestion(subject, index) {
+            let q = questions[subject][index];
+            document.getElementById("new-question").value = q.question;
+            document.getElementById("option1").value = q.options[0];
+            document.getElementById("option2").value = q.options[1];
+            document.getElementById("option3").value = q.options[2];
+            document.getElementById("option4").value = q.options[3];
+            document.getElementById("correct-answer").value = q.correct;
+            
+            deleteQuestion(subject, index);
+        }
+
+        function deleteQuestion(subject, index) {
+            questions[subject].splice(index, 1);
+            if (questions[subject].length === 0) {
+                delete questions[subject];
+            }
+            localStorage.setItem("questions", JSON.stringify(questions));
+            displayQuestions(); // Refresh the list
+        }
+    </script>
+</body>
+</html>
